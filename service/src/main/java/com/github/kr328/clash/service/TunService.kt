@@ -9,6 +9,7 @@ import android.os.Build
 import com.github.kr328.clash.common.compat.pendingIntentFlags
 import com.github.kr328.clash.common.constants.Components
 import com.github.kr328.clash.common.log.Log
+import com.github.kr328.clash.core.Clash
 import com.github.kr328.clash.service.clash.clashRuntime
 import com.github.kr328.clash.service.clash.module.*
 import com.github.kr328.clash.service.model.AccessControlMode
@@ -60,6 +61,8 @@ class TunService : VpnService(), CoroutineScope by CoroutineScope(Dispatchers.De
                         if (Build.VERSION.SDK_INT in 22..28) @TargetApi(22) {
                             setUnderlyingNetworks(n?.let { arrayOf(it) })
                         }
+
+                        Clash.notifyNetworkChanged()
 
                         false
                     }

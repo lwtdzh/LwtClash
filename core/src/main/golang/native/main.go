@@ -15,6 +15,7 @@ import (
 	"cfa/native/delegate"
 	"cfa/native/tunnel"
 
+	"github.com/metacubex/mihomo/component/resolver"
 	"github.com/metacubex/mihomo/log"
 )
 
@@ -52,4 +53,12 @@ func forceGc() {
 		runtime.GC()
 		debug.FreeOSMemory()
 	}()
+}
+
+//export notifyNetworkChanged
+func notifyNetworkChanged() {
+	log.Infoln("[APP] underlying network changed, resetting connections")
+
+	resolver.ResetConnection()
+	tunnel.CloseAllConnections()
 }
