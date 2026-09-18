@@ -27,6 +27,7 @@ class TunService : VpnService(), CoroutineScope by CoroutineScope(Dispatchers.De
 
     private var reason: String? = null
     private var ownsServiceState = false
+    private var revoked = false
     private val watchdog = ServiceWatchdogConnection(this)
 
     private val runtime = clashRuntime {
@@ -110,12 +111,24 @@ class TunService : VpnService(), CoroutineScope by CoroutineScope(Dispatchers.De
         return START_STICKY
     }
 
+    override fun onRevoke() {
+        revoked = true
+        reason = getString(R.string.vpn_revoked_message)
+
+        super.onRevoke()
+        stopSelf()
+    }
+
     override fun onDestroy() {
         if (ownsServiceState) {
             TunModule.requestStop()
 
             StatusProvider.serviceRunning = false
             watchdog.unbind()
+            if (revoked)
+                StaticNotificationModule.notifyRevokedNotification(this)
+            else
+                StaticNotificationModule.cancelNotification(this)
 
             sendClashStopped(reason)
         }

@@ -104,6 +104,7 @@ class ClashService : BaseService() {
         if (ownsServiceState) {
             StatusProvider.serviceRunning = false
             watchdog.unbind()
+            StaticNotificationModule.cancelNotification(this)
 
             sendClashStopped(reason)
         }

@@ -6,6 +6,7 @@ import android.content.Intent
 import androidx.core.app.NotificationChannelCompat
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
+import androidx.core.app.ServiceCompat
 import com.github.kr328.clash.common.compat.getColorCompat
 import com.github.kr328.clash.common.compat.pendingIntentFlags
 import com.github.kr328.clash.common.compat.startForegroundCompat
@@ -76,6 +77,35 @@ class StaticNotificationModule(service: Service) : Module<Unit>(service) {
                     .build()
 
             service.startForegroundCompat(R.id.nf_clash_status, notification)
+        }
+
+        fun cancelNotification(service: Service) {
+            ServiceCompat.stopForeground(service, ServiceCompat.STOP_FOREGROUND_REMOVE)
+            NotificationManagerCompat.from(service).cancel(R.id.nf_clash_status)
+        }
+
+        fun notifyRevokedNotification(service: Service) {
+            ServiceCompat.stopForeground(service, ServiceCompat.STOP_FOREGROUND_REMOVE)
+
+            val notification = NotificationCompat.Builder(service, CHANNEL_ID)
+                .setSmallIcon(R.drawable.ic_logo_service)
+                .setColor(service.getColorCompat(R.color.color_clash))
+                .setAutoCancel(true)
+                .setContentTitle(service.getText(R.string.vpn_revoked_title))
+                .setContentText(service.getText(R.string.vpn_revoked_message))
+                .setContentIntent(
+                    PendingIntent.getActivity(
+                        service,
+                        R.id.nf_clash_status,
+                        Intent().setComponent(Components.MAIN_ACTIVITY)
+                            .setFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP),
+                        pendingIntentFlags(PendingIntent.FLAG_UPDATE_CURRENT)
+                    )
+                )
+                .build()
+
+            NotificationManagerCompat.from(service)
+                .notify(R.id.nf_clash_status, notification)
         }
     }
 }
