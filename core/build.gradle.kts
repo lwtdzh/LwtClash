@@ -10,6 +10,37 @@ plugins {
 }
 
 val golangSource = file("src/main/golang/native")
+val mihomoSource = file("src/foss/golang/clash")
+val mihomoNetworkResetPatch = file("patches/mihomo-network-reset.patch")
+
+val applyMihomoNetworkResetPatch = tasks.register("applyMihomoNetworkResetPatch") {
+    inputs.file(mihomoNetworkResetPatch)
+
+    doLast {
+        val check = project.exec {
+            workingDir(mihomoSource)
+            commandLine("git", "apply", "--check", mihomoNetworkResetPatch)
+            isIgnoreExitValue = true
+        }
+
+        if (check.exitValue == 0) {
+            project.exec {
+                workingDir(mihomoSource)
+                commandLine("git", "apply", mihomoNetworkResetPatch)
+            }
+        } else {
+            val alreadyApplied = project.exec {
+                workingDir(mihomoSource)
+                commandLine("git", "apply", "--reverse", "--check", mihomoNetworkResetPatch)
+                isIgnoreExitValue = true
+            }
+
+            check(alreadyApplied.exitValue == 0) {
+                "Mihomo network reset patch does not apply cleanly"
+            }
+        }
+    }
+}
 
 golang {
     sourceSets {
@@ -59,6 +90,21 @@ dependencies {
 afterEvaluate {
     tasks.withType(GolangBuildTask::class.java).forEach {
         it.inputs.dir(golangSource)
+        it.dependsOn(applyMihomoNetworkResetPatch)
+
+        if (it.name.contains("Debug")) {
+            val arguments = it.commandLine.toMutableList()
+            val tagsIndex = arguments.indexOf("-tags")
+
+            if (tagsIndex >= 0 && tagsIndex + 1 < arguments.size) {
+                arguments[tagsIndex + 1] = arguments[tagsIndex + 1]
+                    .toString()
+                    .split(",")
+                    .filterNot { tag -> tag == "debug" }
+                    .joinToString(",")
+                it.setCommandLine(arguments)
+            }
+        }
     }
 }
 

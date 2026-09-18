@@ -32,7 +32,7 @@ class Broadcasts(private val context: Application) {
 
             when (intent?.action) {
                 Intents.ACTION_SERVICE_RECREATED -> {
-                    clashRunning = false
+                    clashRunning = StatusClient(this@Broadcasts.context).isServiceRunning()
 
                     receivers.forEach {
                         it.onServiceRecreated()
@@ -99,7 +99,7 @@ class Broadcasts(private val context: Application) {
                 addAction(Intents.ACTION_PROFILE_LOADED)
             })
 
-            clashRunning = StatusClient(context).currentProfile() != null
+            clashRunning = StatusClient(context).isServiceRunning()
         } catch (e: Exception) {
             Log.w("Register global receiver: $e", e)
         }

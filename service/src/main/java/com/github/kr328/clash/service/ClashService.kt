@@ -21,6 +21,8 @@ class ClashService : BaseService() {
         get() = this
 
     private var reason: String? = null
+    private var ownsServiceState = false
+    private val watchdog = ServiceWatchdogConnection(this)
 
     private val runtime = clashRuntime {
         val store = ServiceStore(self)
@@ -76,6 +78,8 @@ class ClashService : BaseService() {
             return stopSelf()
 
         StatusProvider.serviceRunning = true
+        ownsServiceState = true
+        watchdog.bind()
 
         StaticNotificationModule.createNotificationChannel(this)
         StaticNotificationModule.notifyLoadingNotification(this)
@@ -84,6 +88,9 @@ class ClashService : BaseService() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        if (!ownsServiceState)
+            return START_NOT_STICKY
+
         sendClashStarted()
 
         return START_STICKY
@@ -94,9 +101,12 @@ class ClashService : BaseService() {
     }
 
     override fun onDestroy() {
-        StatusProvider.serviceRunning = false
+        if (ownsServiceState) {
+            StatusProvider.serviceRunning = false
+            watchdog.unbind()
 
-        sendClashStopped(reason)
+            sendClashStopped(reason)
+        }
 
         cancelAndJoinBlocking()
 

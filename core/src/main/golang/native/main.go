@@ -10,6 +10,7 @@ import "C"
 import (
 	"runtime"
 	"runtime/debug"
+	"sync"
 
 	"cfa/native/config"
 	"cfa/native/delegate"
@@ -18,6 +19,8 @@ import (
 	"github.com/metacubex/mihomo/component/resolver"
 	"github.com/metacubex/mihomo/log"
 )
+
+var networkChangeMu sync.Mutex
 
 func main() {
 	panic("Stub!")
@@ -57,8 +60,11 @@ func forceGc() {
 
 //export notifyNetworkChanged
 func notifyNetworkChanged() {
+	networkChangeMu.Lock()
+	defer networkChangeMu.Unlock()
+
 	log.Infoln("[APP] underlying network changed, resetting connections")
 
-	resolver.ResetConnection()
+	resolver.ResetConnectionSync()
 	tunnel.CloseAllConnections()
 }

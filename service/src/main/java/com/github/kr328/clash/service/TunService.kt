@@ -26,6 +26,8 @@ class TunService : VpnService(), CoroutineScope by CoroutineScope(Dispatchers.De
         get() = this
 
     private var reason: String? = null
+    private var ownsServiceState = false
+    private val watchdog = ServiceWatchdogConnection(this)
 
     private val runtime = clashRuntime {
         val store = ServiceStore(self)
@@ -90,6 +92,8 @@ class TunService : VpnService(), CoroutineScope by CoroutineScope(Dispatchers.De
             return stopSelf()
 
         StatusProvider.serviceRunning = true
+        ownsServiceState = true
+        watchdog.bind()
 
         StaticNotificationModule.createNotificationChannel(this)
         StaticNotificationModule.notifyLoadingNotification(this)
@@ -98,17 +102,23 @@ class TunService : VpnService(), CoroutineScope by CoroutineScope(Dispatchers.De
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        if (!ownsServiceState)
+            return START_NOT_STICKY
+
         sendClashStarted()
 
-        return super.onStartCommand(intent, flags, startId)
+        return START_STICKY
     }
 
     override fun onDestroy() {
-        TunModule.requestStop()
+        if (ownsServiceState) {
+            TunModule.requestStop()
 
-        StatusProvider.serviceRunning = false
+            StatusProvider.serviceRunning = false
+            watchdog.unbind()
 
-        sendClashStopped(reason)
+            sendClashStopped(reason)
+        }
 
         cancelAndJoinBlocking()
 

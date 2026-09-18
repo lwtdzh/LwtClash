@@ -6,8 +6,10 @@ import com.github.kr328.clash.common.Global
 import com.github.kr328.clash.common.compat.currentProcessName
 import com.github.kr328.clash.common.log.Log
 import com.github.kr328.clash.remote.Remote
+import com.github.kr328.clash.service.StatusProvider
 import com.github.kr328.clash.service.util.sendServiceRecreated
 import com.github.kr328.clash.util.clashDir
+import com.github.kr328.clash.util.startClashService
 import java.io.File
 import java.io.FileOutputStream
 
@@ -28,10 +30,14 @@ class MainApplication : Application() {
 
         Log.d("Process $processName started")
 
-        if (processName == packageName) {
-            Remote.launch()
-        } else {
-            sendServiceRecreated()
+        when (processName) {
+            packageName -> Remote.launch()
+            "$packageName:background" -> {
+                sendServiceRecreated()
+
+                if (StatusProvider.shouldStartClashOnBoot)
+                    startClashService()
+            }
         }
     }
 

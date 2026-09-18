@@ -50,9 +50,10 @@ class TileService : TileService() {
             null
         )
 
-        val name = StatusClient(this).currentProfile()
+        val status = StatusClient(this)
+        val name = status.currentProfile()
 
-        clashRunning = name != null
+        clashRunning = status.isServiceRunning()
         currentProfile = name ?: ""
 
         updateTile()
@@ -90,10 +91,16 @@ class TileService : TileService() {
 
                     currentProfile = ""
                 }
-                Intents.ACTION_CLASH_STOPPED, Intents.ACTION_SERVICE_RECREATED -> {
+                Intents.ACTION_CLASH_STOPPED -> {
                     clashRunning = false
 
                     currentProfile = ""
+                }
+                Intents.ACTION_SERVICE_RECREATED -> {
+                    val status = StatusClient(this@TileService)
+
+                    clashRunning = status.isServiceRunning()
+                    currentProfile = status.currentProfile() ?: ""
                 }
                 Intents.ACTION_PROFILE_LOADED -> {
                     currentProfile = StatusClient(this@TileService).currentProfile() ?: ""

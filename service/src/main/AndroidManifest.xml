@@ -38,6 +38,10 @@
             android:exported="false"
             android:process=":background" />
         <service
+            android:name=".ServiceWatchdog"
+            android:exported="false"
+            android:process=":watchdog" />
+        <service
             android:name=".ProfileWorker"
             android:exported="false"
             android:process=":background"

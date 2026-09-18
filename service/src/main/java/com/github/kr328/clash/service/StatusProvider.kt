@@ -10,6 +10,11 @@ import com.github.kr328.clash.common.Global
 class StatusProvider : ContentProvider() {
     override fun call(method: String, arg: String?, extras: Bundle?): Bundle? {
         return when (method) {
+            METHOD_SERVICE_RUNNING -> {
+                Bundle().apply {
+                    putBoolean(KEY_SERVICE_RUNNING, serviceRunning)
+                }
+            }
             METHOD_CURRENT_PROFILE -> {
                 return if (serviceRunning)
                     Bundle().apply {
@@ -58,10 +63,13 @@ class StatusProvider : ContentProvider() {
     }
 
     companion object {
+        const val METHOD_SERVICE_RUNNING = "serviceRunning"
         const val METHOD_CURRENT_PROFILE = "currentProfile"
+        const val KEY_SERVICE_RUNNING = "serviceRunning"
 
         private const val CLASH_SERVICE_RUNNING_FILE = "service_running.lock"
 
+        @Volatile
         var serviceRunning: Boolean = false
             set(value) {
                 field = value
@@ -78,6 +86,7 @@ class StatusProvider : ContentProvider() {
                         delete()
                 }
             }
+        @Volatile
         var currentProfile: String? = null
     }
 }

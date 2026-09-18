@@ -31,4 +31,19 @@ class StatusClient(private val context: Context) {
             null
         }
     }
+
+    fun isServiceRunning(): Boolean {
+        return try {
+            context.contentResolver.call(
+                uri,
+                StatusProvider.METHOD_SERVICE_RUNNING,
+                null,
+                null
+            )?.getBoolean(StatusProvider.KEY_SERVICE_RUNNING) == true
+        } catch (e: Exception) {
+            Log.w("Query service status: $e", e)
+
+            false
+        }
+    }
 }

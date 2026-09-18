@@ -1,0 +1,106 @@
+diff --git a/component/resolver/resolver.go b/component/resolver/resolver.go
+index e87a9103..279921ae 100644
+--- a/component/resolver/resolver.go
++++ b/component/resolver/resolver.go
+@@ -5,6 +5,7 @@ import (
+ 	"errors"
+ 	"fmt"
+ 	"net/netip"
++	"sync"
+ 	"time"
+ 
+ 	"github.com/metacubex/mihomo/common/utils"
+@@ -36,6 +37,8 @@ var (
+ 
+ 	// DefaultDNSTimeout defined the default dns request timeout
+ 	DefaultDNSTimeout = time.Second * 5
++
++	resetConnectionMu sync.Mutex
+ )
+ 
+ var (
+@@ -238,10 +241,19 @@ func ClearCache() {
+ }
+ 
+ func ResetConnection() {
++	go ResetConnectionSync()
++}
++
++func ResetConnectionSync() {
++	resetConnectionMu.Lock()
++	defer resetConnectionMu.Unlock()
++
+ 	if DefaultResolver != nil {
+-		go DefaultResolver.ResetConnection()
++		DefaultResolver.ResetConnection()
++	}
++	if SystemResolver != nil {
++		SystemResolver.ResetConnection()
+ 	}
+-	go SystemResolver.ResetConnection() // SystemResolver unneeded check nil
+ }
+ 
+ func SortationAddr(ips []netip.Addr) (ipv4s, ipv6s []netip.Addr) {
+diff --git a/dns/patch_android.go b/dns/patch_android.go
+index cad718b6..ffe1e041 100644
+--- a/dns/patch_android.go
++++ b/dns/patch_android.go
+@@ -3,10 +3,15 @@
+ package dns
+ 
+ import (
++	"sync"
++
+ 	"github.com/metacubex/mihomo/component/resolver"
+ )
+ 
+-var systemResolver []dnsClient
++var (
++	systemResolverMu sync.RWMutex
++	systemResolver   []dnsClient
++)
+ 
+ func FlushCacheWithDefaultResolver() {
+ 	resolver.ClearCache()
+@@ -14,24 +19,34 @@ func FlushCacheWithDefaultResolver() {
+ }
+ 
+ func UpdateSystemDNS(addr []string) {
+-	if len(addr) == 0 {
+-		systemResolver = nil
+-	}
+-
+ 	ns := make([]NameServer, 0, len(addr))
+ 	for _, d := range addr {
+ 		ns = append(ns, NameServer{Addr: d})
+ 	}
+ 
+-	systemResolver = transform(ns, nil)
++	next := transform(ns, nil)
++
++	systemResolverMu.Lock()
++	for _, r := range systemResolver {
++		r.ResetConnection()
++	}
++	systemResolver = next
++	systemResolverMu.Unlock()
+ }
+ 
+ func (c *systemClient) getDnsClients() ([]dnsClient, error) {
+-	return systemResolver, nil
++	systemResolverMu.RLock()
++	defer systemResolverMu.RUnlock()
++
++	return append([]dnsClient(nil), systemResolver...), nil
+ }
+ 
+ func (c *systemClient) ResetConnection() {
+-	for _, r := range systemResolver {
++	systemResolverMu.RLock()
++	current := append([]dnsClient(nil), systemResolver...)
++	systemResolverMu.RUnlock()
++
++	for _, r := range current {
+ 		r.ResetConnection()
+ 	}
+ }
